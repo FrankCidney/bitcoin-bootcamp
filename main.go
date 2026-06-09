@@ -68,10 +68,33 @@ func showBlockchainInfo() error {
     return nil
 }
 
+func showWalletBalance(wallet string) error {
+    // Wallet may already be loaded -> ignore the error
+    _ = rpc("loadwallet", []any{wallet}, "", nil)
+
+    var balance float64
+    if err := rpc("getbalance", nil, wallet, &balance); err != nil {
+        return err
+    }
+    fmt.Printf("=== Wallet: %s ===\n", wallet)
+    fmt.Printf("Balance: %v BTC\n", balance)
+    return nil
+}
+
 func main() {
-	err := showBlockchainInfo()
-	if err != nil {
+	// err := showBlockchainInfo()
+	// if err != nil {
+	// 	fmt.Printf("error showing blockchain info: %s", err)
+	// 	os.Exit(1)
+	// }
+
+	if err := showWalletBalance("alice"); err != nil {
 		fmt.Printf("error showing blockchain info: %s", err)
 		os.Exit(1)
 	}
+
+	// if err != nil {
+	// 	fmt.Printf("error showing blockchain info: %s", err)
+	// 	os.Exit(1)
+	// }
 }
