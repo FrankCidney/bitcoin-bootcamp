@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"os"
+	"log"
+	"net/http"	
 )
 
 // RPC Helper
@@ -81,18 +81,99 @@ func showWalletBalance(wallet string) error {
     return nil
 }
 
-func main() {
-	// err := showBlockchainInfo()
-	// if err != nil {
-	// 	fmt.Printf("error showing blockchain info: %s", err)
-	// 	os.Exit(1)
+func listTransactions(wallet string, count int) error {
+    _ = rpc("loadwallet", []any{wallet}, "", nil)
+
+    var txs []struct {
+        Category      string  `json:"category"`
+        Amount        float64 `json:"amount"`
+        TxID          string  `json:"txid"`
+        Confirmations int     `json:"confirmations"`
+    }
+    if err := rpc("listtransactions", []any{"*", count}, wallet, &txs); err != nil {
+        return err
+    }
+    for _, tx := range txs {
+        dir := "OUT"
+        switch tx.Category {
+        case "receive", "generate", "immature":
+            dir = "IN "
+        }
+        fmt.Printf("%s %+.8f BTC | %d confs\n", dir, tx.Amount, tx.Confirmations)
+        fmt.Printf("     TXID: %s\n", tx.TxID)
+    }
+    return nil
+}
+
+func decodeTransaction(txid string) error {
+    var tx struct {
+        Vin []struct {
+            Coinbase string `json:"coinbase"`
+            TxID     string `json:"txid"`
+            Vout     int    `json:"vout"`
+        } `json:"vin"`
+        Vout []struct {
+            Value        float64 `json:"value"`
+            ScriptPubKey struct {
+                Address string `json:"address"`
+            } `json:"scriptPubKey"`
+        } `json:"vout"`
+    }
+    rpc("getrawtransaction", []any{txid, true}, "", &tx)
+    for _, vin := range tx.Vin {
+        if vin.Coinbase != "" {
+            fmt.Println("  COINBASE (mining reward)")
+        } else {
+            fmt.Printf("  From: %s...\n", vin.TxID[:20])
+        }
+    }
+    for _, vout := range tx.Vout {
+        fmt.Printf("  %.8f BTC -> %s\n", vout.Value, vout.ScriptPubKey.Address)
+    }
+    return nil
+}
+
+func showBlock(blockhash string) error {
+    if blockhash == "" {
+        rpc("getbestblockhash", nil, "", &blockhash)
+    }
+    var block struct {
+        Height int      `json:"height"`
+        Hash   string   `json:"hash"`
+        Time   int64    `json:"time"`
+        NTx    int      `json:"nTx"`
+        Tx     []string `json:"tx"`
+    }
+    if err := rpc("getblock", []any{blockhash, 1}, "", &block); err != nil {
+        return err
+    }
+    fmt.Printf("=== Block #%d ===\n", block.Height)
+    fmt.Printf("Hash: %s...\n", block.Hash[:32])
+    fmt.Printf("Time: %d\n", block.Time)
+    fmt.Printf("Transactions: %d\n", block.NTx)
+    return nil
+}
+
+func main() {	
+	// if err := showBlockchainInfo(); err != nil {
+	// 	log.Fatal("error showing blockchain info: ", err)
 	// }
 
-	if err := showWalletBalance("alice"); err != nil {
-		fmt.Printf("error showing blockchain info: %s", err)
-		os.Exit(1)
-	}
+	// if err := showWalletBalance("alice"); err != nil {
+	// 	log.Fatal("error showing wallet balance: ", err)
+	// }	
 
+	// if err := listTransactions("alice", 5); err != nil {
+	// 	log.Fatal("error listing transactions: ", err)
+	// }
+
+	// if err := decodeTransaction("41f410bc6f389ff39557f2d270a27cae1e41ffa64f759f8fd73914f82585cc01"); err != nil {
+	// 	log.Fatal("error decoding transaction: ", err)
+	// }
+
+	if err := showBlock(""); err != nil {
+		log.Fatal("error showing block: ", err)
+	}
 	// if err != nil {
 	// 	fmt.Printf("error showing blockchain info: %s", err)
 	// 	os.Exit(1)
