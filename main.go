@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 )
 
 // RPC Helper
@@ -23,7 +24,7 @@ type rpcResponse struct {
 }
 
 func rpc(method string, params []any, wallet string, out any) error {
-	url := "127.0.0.1"
+	url := "http://127.0.0.1:18443/"
 	
 	if wallet != "" { url += "wallet/" + wallet }
 	body, _ := json.Marshal(rpcRequest{
@@ -49,4 +50,28 @@ func rpc(method string, params []any, wallet string, out any) error {
 	}
 
 	return json.Unmarshal(parsed.Result, out)
+}
+
+func showBlockchainInfo() error {
+    var info struct {
+        Chain      string  `json:"chain"`
+        Blocks     int     `json:"blocks"`
+        Difficulty float64 `json:"difficulty"`
+    }
+    if err := rpc("getblockchaininfo", nil, "", &info); err != nil {
+        return err
+    }
+    fmt.Println("=== Blockchain Info ===")
+    fmt.Printf("Chain:      %s\n", info.Chain)
+    fmt.Printf("Blocks:     %d\n", info.Blocks)
+    fmt.Printf("Difficulty: %v\n", info.Difficulty)
+    return nil
+}
+
+func main() {
+	err := showBlockchainInfo()
+	if err != nil {
+		fmt.Printf("error showing blockchain info: %s", err)
+		os.Exit(1)
+	}
 }
