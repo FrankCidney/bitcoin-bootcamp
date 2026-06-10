@@ -154,6 +154,27 @@ func showBlock(blockhash string) error {
     return nil
 }
 
+func showUTXOs(wallet string) error {
+    _ = rpc("loadwallet", []any{wallet}, "", nil)
+
+    var utxos []struct {
+        TxID          string  `json:"txid"`
+        Vout          int     `json:"vout"`
+        Address       string  `json:"address"`
+        Amount        float64 `json:"amount"`
+        Confirmations int     `json:"confirmations"`
+    }
+    if err := rpc("listunspent", nil, wallet, &utxos); err != nil {
+        return err
+    }
+    fmt.Printf("=== UTXOs for wallet: %s ===\n", wallet)
+    for _, u := range utxos {
+        fmt.Printf("%.8f BTC | %d confs | %s\n", u.Amount, u.Confirmations, u.Address)
+        fmt.Printf("  TXID: %s\n", u.TxID)
+    }
+    return nil
+}
+
 func main() {	
 	// if err := showBlockchainInfo(); err != nil {
 	// 	log.Fatal("error showing blockchain info: ", err)
@@ -171,9 +192,13 @@ func main() {
 	// 	log.Fatal("error decoding transaction: ", err)
 	// }
 
-	if err := showBlock(""); err != nil {
-		log.Fatal("error showing block: ", err)
-	}
+	// if err := showBlock(""); err != nil {
+	// 	log.Fatal("error showing block: ", err)
+	// }
+
+    if err := showUTXOs("alice"); err != nil {
+        log.Fatal("error showing UTXOs: ", err)
+    }
 	// if err != nil {
 	// 	fmt.Printf("error showing blockchain info: %s", err)
 	// 	os.Exit(1)
